@@ -1,62 +1,44 @@
-#name: Python CI with Ollama
+name: Python application
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ "main", "master" ]
-
-permissions:
-  contents: read
+    branches: [ main, master ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: '3.11'
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    
-    - name: Install QRDecoder dependencies
-      working-directory: ./3_1_LLM_agent
-      run: |
-        pip install pyzbar Pillow qrcode requests
-    
-    - name: Install libzbar for pyzbar on Linux
-      run: |
+        pip install pytest pytest-cov
+        pip install qrcode pyzbar Pillow requests
+        pip install python-decouple
+        pip install -r requirements.txt
         sudo apt-get update
         sudo apt-get install -y libzbar0
-    
-    - name: Download and extract Ollama manually
-      run: |
-        if [ "${{ runner.arch }}" = "X64" ]; then ARCH="amd64"; else ARCH="arm64"; fi
-        curl -fsSL "https://ollama.com/download/ollama-linux-${ARCH}.tar.zst" -o ollama.tar.zst
-        mkdir -p .ollama-install
-        tar -C .ollama-install --zstd -xf ollama.tar.zst
-        rm ollama.tar.zst
-        echo "$(pwd)/.ollama-install/bin" >> $GITHUB_PATH
-
-    - name: Start Ollama Service and Pull Model
-      run: |
-        export OLLAMA_NUM_PARALLEL=1
-        export OLLAMA_MAX_LOADED_MODELS=1
-        ollama serve > ollama.log 2>&1 &
-        sleep 5
-        ollama pull qwen3.5:0.8b
     
     - name: Test with pytest
       working-directory: ./3_1_LLM_agent
       env:
         PYTHONPATH: .
       run: |
-        python -m pytest tests/test_qr_decoder.py -v
+        python -m pytest tests/test_qr_decoder.py -v --cov=llm_agent.qr_decoder_tool --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./3_1_LLM_agent/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
