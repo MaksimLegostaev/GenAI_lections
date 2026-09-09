@@ -44,10 +44,12 @@ class TestQRDecoderTool(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Очистка после тестов"""
-        # Удаляем тестовые файлы
-        if os.path.exists(cls.qr_filename):
-            os.unlink(cls.qr_filename)
+        # Удаляем все файлы в test_dir
         if os.path.exists(cls.test_dir):
+            for file in os.listdir(cls.test_dir):
+                file_path = os.path.join(cls.test_dir, file)
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
             os.rmdir(cls.test_dir)
     
     def test_decode_from_path(self):
@@ -100,6 +102,77 @@ class TestQRDecoderTool(unittest.TestCase):
         self.assertIn('png', formats)
         self.assertIn('jpg', formats)
         self.assertIn('jpeg', formats)
+    
+    def test_use_method(self):
+        """Тест 6: Метод use() для вызова из LLM-агента"""
+        print("\n=== Тест метода use() ===")
+        
+        # Создаем QR-код с тестовыми данными
+        test_data = "https://example.com/use-method-test"
+        qr_filename = os.path.join(self.test_dir, "test_use_method.png")
+        
+        # Генерируем QR-код
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(test_data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save(qr_filename)
+        
+        try:
+            # Тестируем метод use() с локальным файлом
+            result = self.decoder.use(qr_filename)
+            self.assertIn(test_data, result)
+            print(f"✓ Метод use() с файлом работает: {result}")
+            
+            # Тестируем с несуществующим файлом
+            result_invalid = self.decoder.use("nonexistent_file.png")
+            self.assertIn("Ошибка", result_invalid)
+            print(f"✓ Метод use() с несуществующим файлом корректно обрабатывает ошибку")
+            
+        except Exception as e:
+            print(f"✗ Ошибка в тесте use(): {e}")
+            raise
+    
+    def test_llm_agent_integration(self):
+        """Тест 7: Интеграция QRDecoderTool в LLM-агент"""
+        print("\n=== Тест интеграции с LLM-агентом ===")
+        
+        # Создаем QR-код с тестовыми данными
+        test_data = "https://example.com/integration-test"
+        qr_filename = os.path.join(self.test_dir, "test_integration.png")
+        
+        # Генерируем QR-код
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(test_data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        img.save(qr_filename)
+        
+        try:
+            # Импортируем LLM-агент
+            from llm_agent.core_v2 import LLMAgent
+            
+            # Создаем экземпляр агента (можно в локальном режиме)
+            agent = LLMAgent(local=True)
+            
+            # Проверяем, что инструмент зарегистрирован
+            self.assertIn("qr_decoder", agent.tools)
+            print(f"✓ Инструмент 'qr_decoder' зарегистрирован в агенте")
+            
+            # Проверяем, что инструмент работает через метод use()
+            result = agent.tools["qr_decoder"].use(qr_filename)
+            self.assertIn(test_data, result)
+            print(f"✓ QRDecoderTool работает в составе агента: {result}")
+            
+            # Проверяем, что инструмент описан в системном промпте
+            import inspect
+            system_prompt = inspect.getsource(agent._ask_llm_for_plan)
+            self.assertIn("qr_decoder", system_prompt)
+            print(f"✓ Инструмент 'qr_decoder' описан в системном промпте")
+            
+        except Exception as e:
+            print(f"✗ Ошибка в тесте интеграции: {e}")
+            raise
 
 
 def run_tests():
