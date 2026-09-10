@@ -19,56 +19,64 @@ class QRDecoderTool:
     Инструмент для декодирования QR-кодов из изображений.
     Поддерживает: путь к файлу, URL, base64-строку, объект PIL.Image
     """
-    
+    name = "qr_decoder"
+    description = (
+        "Декодирует QR-коды из изображений. "
+        "Принимает путь к файлу, URL или base64-строку."
+    )
+
     def __init__(self):
         """Инициализация инструмента"""
         self.supported_formats = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'webp']
         self._cache = {}  # Простой кеш для результатов
     
     def use(self, source: str) -> str:
-        """
-        Универсальный метод для вызова из LLM-агента.
-        Принимает строку (путь, URL или base64) и возвращает результат.
-        """
-        try:
-            print(f"> QRDecoderTool: обрабатываю '{source}'")
+    """
+    Универсальный метод для вызова из LLM-агента.
+    Принимает строку (путь, URL или base64) и возвращает результат.
+    Умеет извлекать путь из текстового описания.
+    """
+    try:
+        print(f"> QRDecoderTool: обрабатываю '{source}'")
+        
+        # Если source — это целая фраза, пытаемся извлечь из неё путь/URL
+        cleaned_source = source.strip()
+        
+        # 1. Если это URL — используем как есть
+        if cleaned_source.startswith(('http://', 'https://')):
+            results = self.decode_from_url(cleaned_source)
+        
+        # 2. Если это base64
+        elif cleaned_source.startswith('data:image'):
+            results = self.decode_from_base64(cleaned_source)
+        
+        # 3. Если это существующий файл — используем как есть
+        elif os.path.exists(cleaned_source):
+            results = self.decode_from_path(cleaned_source)
+        
+        # 4. Пытаемся извлечь путь к файлу из текста
+        else:
+            import re
+            # Ищем что-то похожее на путь к файлу с расширением изображения
+            # Например: test_qr.png, /path/to/image.jpg, C:\folder\qr.png
+            pattern = r'[a-zA-Z]:\\[^\s]*?\.(?:png|jpg|jpeg|bmp|gif|webp)|[^\s]+\.(?:png|jpg|jpeg|bmp|gif|webp)'
+            matches = re.findall(pattern, cleaned_source, re.IGNORECASE)
             
-            # Определяем тип источника
-            if source.startswith('http://') or source.startswith('https://'):
-                results = self.decode_from_url(source)
-            elif source.startswith('data:image'):
-                results = self.decode_from_base64(source)
-            elif os.path.exists(source):
-                results = self.decode_from_path(source)
+            if matches:
+                file_path = matches[0]
+                print(f"> QRDecoderTool: извлёк путь из текста: '{file_path}'")
+                if os.path.exists(file_path):
+                    results = self.decode_from_path(file_path)
+                else:
+                    return f"Ошибка: файл '{file_path}' не найден"
             else:
-                return f"Ошибка: не могу определить тип источника '{source}'"
-            
-            if results:
-                return f"QR-код содержит: {results[0]['data']}"
-            return "QR-код не найден в изображении"
-        except Exception as e:
-            return f"Ошибка при декодировании QR-кода: {str(e)}"
-    
-    def decode_from_path(self, image_path: str) -> List[Dict[str, Union[str, bytes]]]:
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Файл не найден: {image_path}")
+                return f"Ошибка: не могу определить тип источника '{source}'. Укажите путь к файлу, URL или base64."
         
-        # Проверка расширения
-        ext = os.path.splitext(image_path)[1].lower()[1:]
-        if ext not in self.supported_formats:
-            raise ValueError(f"Неподдерживаемый формат: {ext}. Поддерживаемые: {self.supported_formats}")
-        
-        # Кеширование по пути
-        if image_path in self._cache:
-            return self._cache[image_path]
-        
-        try:
-            image = Image.open(image_path)
-            result = self.decode_from_image(image)
-            self._cache[image_path] = result
-            return result
-        except Exception as e:
-            raise RuntimeError(f"Ошибка при декодировании QR-кода: {str(e)}")
+        if results:
+            return f"QR-код содержит: {results[0]['data']}"
+        return "QR-код не найден в изображении"
+    except Exception as e:
+        return f"Ошибка при декодировании QR-кода: {str(e)}"
     
     def decode_from_url(self, image_url: str, timeout: int = 10) -> List[Dict[str, Union[str, bytes]]]:
         # Проверка URL
