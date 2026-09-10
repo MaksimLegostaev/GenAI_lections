@@ -39,7 +39,7 @@ jobs:
     
     - name: Pull Ollama model
       run: |
-        ollama pull qwen3.5:0.8b
+        ollama pull qwen2.5:0.5b
     
     - name: Verify Ollama is running
       run: |
