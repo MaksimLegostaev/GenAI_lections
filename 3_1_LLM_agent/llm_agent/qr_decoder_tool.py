@@ -20,6 +20,12 @@ class QRDecoderTool:
     Поддерживает: путь к файлу, URL, base64-строку, объект PIL.Image
     """
     
+    name = "qr_decoder"
+    description = (
+        "Декодирует QR-коды из изображений. "
+        "Принимает путь к файлу, URL или base64-строку."
+    )
+    
     def __init__(self):
         """Инициализация инструмента"""
         self.supported_formats = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'webp']

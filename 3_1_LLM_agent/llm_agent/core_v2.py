@@ -19,7 +19,7 @@ class LLMAgent:
     """
 
     def __init__(self, model: str = "tngtech/deepseek-r1t2-chimera", local: bool = False, 
-                 ollama_base_url: str = "http://localhost:11434", ollama_model: str = "qwen3:0.6b"):
+              ollama_base_url: str = "http://localhost:11434", ollama_model: str = "qwen3.5:2b"):
         """
         Инициализирует агента.
         
@@ -89,21 +89,29 @@ class LLMAgent:
         # Системный промпт, который объясняет агенту его роль и формат ответа
         system_prompt = f"""
         You are a helpful AI planning assistant. Analyze the user's request and decide if you need to use any tools.
+
         Available tools:
         - **calculator**: For any math-related questions (numbers, calculations). Use it with the full expression.
         - **web_search**: For finding any information about the real world (current events, facts, definitions). Use it with the user's question or a clear search query. USE ONLY RUSSIAN LANGUAGE QUERIES in this tool.
         - **pdf_info**: For extracting information from PDF files (metadata, page count, text content). Use it with a local file path or a URL to a PDF file.
-        - **qr_decoder**: For decoding QR codes from images. Use it with a file path, URL, or base64 string.
-        Your response MUST be ONLY a JSON object of the following format.
-        If one or more tools are needed to answer, return JSON of this structure:
-        {{
+        - **qr_decoder**: For decoding QR codes from images. Use it with ONLY the file path, URL, or base64 string — NOT a full sentence. Example: use "test_qr.png", NOT "decode QR from test_qr.png".
+
+       IMPORTANT RULES:
+       1. If the user asks to DECODE a QR code - use **qr_decoder** ONLY, NOT web_search or pdf_info.
+       2. If the user asks about a PDF file - use **pdf_info** ONLY.
+       3. If the user asks to search the internet - use **web_search** ONLY.
+       4. Choose the MOST SPECIFIC tool for the task.
+
+       Your response MUST be ONLY a JSON object of the following format.
+       If one or more tools are needed to answer, return JSON of this structure:
+       {{
         "plan": [
-            {{"action": "tool_name", "input": "some text to pass into tool"}},
-            ... //MORE ACTIONS IF NEEDED SEVERAL TOOLS. ONE ACTION FOR ONE TOOL CALL
+           {{"action": "tool_name", "input": "some text to pass into tool"}},
+        ... //MORE ACTIONS IF NEEDED SEVERAL TOOLS. ONE ACTION FOR ONE TOOL CALL
         ]
-        }}
-        If no tool is needed, return an empty plan: {{"plan": []}}.
-        """
+       }}
+       If no tool is needed, return an empty plan: {{"plan": []}}.
+       """
 
         # Формируем запрос к API
         payload = {
