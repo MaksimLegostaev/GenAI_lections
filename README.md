@@ -1,4 +1,4 @@
-\[!\[codecov](https://codecov.io/gh/MaksimLegostaev/GenAI\_Lections/branch/main/graph/badge.svg)](https://codecov.io/gh/MaksimLegostaev/GenAI\_Lections)
+[![codecov](https://codecov.io/gh/MaksimLegostaev/GenAI_Lections/branch/main/graph/badge.svg)](https://codecov.io/gh/MaksimLegostaev/GenAI_Lections)
 
 
 
