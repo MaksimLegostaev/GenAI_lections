@@ -52,7 +52,7 @@ jobs:
       run: |
         python -m pytest tests/test_qr_decoder.py -v --cov=llm_agent.qr_decoder_tool --cov-report=xml
     
-     - name: Upload coverage to Codecov
+    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
